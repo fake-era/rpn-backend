@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:6-alpine
+
+  server:
+    build: ./server
+    command: uvicorn main:app --host 0.0.0.0 --port 8001
+    volumes:
+      - ./server:/app
+    ports:
+      - 8001:8001
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:1337@192.168.87.10:5432/rpn
+    depends_on:
+      - redis
+
+  worker:
+    build: ./server
+    command: celery worker --app=worker.celery --loglevel=info
+    volumes:
+      - ./server:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - server
+      - redis
